@@ -1266,8 +1266,7 @@ Partial Class Siniestros_OrdenPago
                                 oFila("ImportePagos") = oFilaSeleccion(0).Item("Total_Pago")
                                 oFila("CodigoAsegurado") = oFilaSeleccion(0).Item("cod_aseg")
                                 oFila("MonedaFactura") = 0
-                                'Se Agrega codigo para cargar el Subtotal de la tabla mis para el proyecto de interproteccion
-                                oFila("Pago") = Math.Round(IIf(cmbMonedaPago.SelectedValue = 0, CDbl(oFilaSeleccion(0).Item("Subtotal")), CDbl(oFilaSeleccion(0).Item("Subtotal"))), 2)
+
                             Case eTipoUsuario.Proveedor
                                 oFila("Factura") = oFilaSeleccion(0).Item("folio_GMX")
                                 oFila("CodigoTercero") = 0
@@ -1285,19 +1284,6 @@ Partial Class Siniestros_OrdenPago
                                 Else
                                     oFila("Pago") = 0
                                 End If
-
-                                'Se comenta por que la validacion debe ser al final
-                                'If cmbTipoUsuario.SelectedValue = eTipoUsuario.Proveedor AndAlso CDbl(oFila("Pago")) > CDbl(oFilaSeleccion(0).Item("Reserva")) Then
-                                '    oFila("Pago") = 0
-                                '    Mensaje.MuestraMensaje("OrdenPagoSiniestros", String.Format("Límite de Reserva superado. {0} Reserva: {1} {2} Total de pagos: {3}",
-                                '                                                                Environment.NewLine,
-                                '                                                                CDbl(oFilaSeleccion(0).Item("Reserva")),
-                                '                                                                Environment.NewLine,
-                                '                                                                CDbl(oFilaSeleccion(0).Item("ImportePagosInd"))
-                                '                                                                 ), TipoMsg.Advertencia)
-                                'Else
-                                '    oFila("Pago") = Math.Round(IIf(cmbMonedaPago.SelectedValue = 0, CDbl(oFilaSeleccion(0).Item("imp_subtotal")), CDbl(oFilaSeleccion(0).Item("imp_subtotal"))), 2)
-                                'End If
 
                                 'Verificar si se queda
                                 oFila("Impuestos") = CDbl(oFilaSeleccion(0).Item("imp_impuestos"))
@@ -1325,6 +1311,9 @@ Partial Class Siniestros_OrdenPago
                             oFila("FastTrack") = oFilaSeleccion(0).Item("Fast_track")
                             oTipoCuentaT_stro.Value = oFilaSeleccion(0).Item("Cuenta")
                             oCuentaBancariaT_stro.Value = oFilaSeleccion(0).Item("Cuenta_Clabe")
+                            oFila("Pago") = Math.Round(IIf(cmbMonedaPago.SelectedValue = 0, CDbl(oFilaSeleccion(0).Item("Subtotal")), CDbl(oFilaSeleccion(0).Item("Subtotal"))), 2)
+                        Else
+                            oFila("FastTrack") = oFilaSeleccion(0).Item("Fast_track")
                         End If
 
                         oTabla.Rows.Add(oFila)
@@ -1350,8 +1339,12 @@ Partial Class Siniestros_OrdenPago
                                     End If
 
                                 Next
-                                txtConceptoOP.Text = String.Format("{0} {1}", txtConceptoOP.Text.Trim.ToString(), oClavesPago.Select(String.Format("cod_clase_pago = '{0}'", oTabla.Rows(0)("ClasePago")))(0)("txt_desc").ToString())
+                            txtConceptoOP.Text = String.Format("{0} {1}", txtConceptoOP.Text.Trim.ToString(), oClavesPago.Select(String.Format("cod_clase_pago = '{0}'", oTabla.Rows(0)("ClasePago")))(0)("txt_desc").ToString())
+                            'se agrega por tema fast track
+                            If (oFilaSeleccion(0).Item("Fast_track") = "SI") Then
+                                CalcularTotales()
                             End If
+                        End If
 
                             If cmbTipoUsuario.SelectedValue = eTipoUsuario.Proveedor Then
                                 CalcularTotales()
@@ -1440,7 +1433,7 @@ Partial Class Siniestros_OrdenPago
                         oParametros.Add("CuentaBancaria", oCuentaBancariaT_stro.Value)
                         oParametros.Add("Plaza", oPlazaT_stro.Value)
                         oParametros.Add("ABA", oAbaT_stro.Value)
-
+                        oParametros.Add("Fasttrack", oGrdOrden.Rows(0).Item("FastTrack")) 'se agrega por proyecto de inter
                         bTieneDatosBancarios = True
 
                     End With
@@ -1460,14 +1453,15 @@ Partial Class Siniestros_OrdenPago
 
                     'Se agrega validacion para que no habilite el pago por que ya se carga por default proyeco interproteccion fast track
                     If (oGrdOrden.Rows(0).Item("FastTrack") = "SI") Then
-                        oParametros.Add("Banco", oCuentaBancariaT_stro.Value.Substring(1, 3))
+                        oParametros.Add("Banco", CInt(oCuentaBancariaT_stro.Value.Substring(0, 3)))
                         oParametros.Add("Sucursal", oSucursalT_stro.Value)
                         oParametros.Add("Beneficiario", oBeneficiarioT_stro.Value)
                         oParametros.Add("Moneda", cmbMonedaPago.SelectedValue)
-                        oParametros.Add("TipoCuenta", oTipoCuentaT_stro.Value)
+                        oParametros.Add("TipoCuenta", 1)
                         oParametros.Add("CuentaBancaria", oCuentaBancariaT_stro.Value)
                         oParametros.Add("Plaza", oPlazaT_stro.Value)
                         oParametros.Add("ABA", oAbaT_stro.Value)
+                        oParametros.Add("Fasttrack", oGrdOrden.Rows(0).Item("FastTrack"))
                         bTieneDatosBancarios = True  '   Con esta variable condicionamos a tomar los datos bancarios precargados de trasfernecia 
                     Else
                         oParametros.Add("Banco", oBancoT_stro.Value)
@@ -1478,6 +1472,7 @@ Partial Class Siniestros_OrdenPago
                         oParametros.Add("CuentaBancaria", oCuentaBancariaT_stro.Value)
                         oParametros.Add("Plaza", oPlazaT_stro.Value)
                         oParametros.Add("ABA", oAbaT_stro.Value)
+                        oParametros.Add("Fasttrack", oGrdOrden.Rows(0).Item("FastTrack")) 'se agrega por proyecto de inter
                         bTieneDatosBancarios = False 'Con esta variable condicionamos a tomar los datos bancarios precargados de trasfernecia 
                     End If
 
